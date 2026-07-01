@@ -413,6 +413,23 @@ body {
   border-color: var(--black);
 }
 
+.draft-badge {
+  margin-left: 8px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--white);
+  color: var(--black);
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.editor-footer-hint.is-draft {
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
 .item-count-detail {
   color: var(--gray-400);
 }
@@ -831,10 +848,12 @@ body {
 .toast-container {
   position: fixed;
   bottom: 28px;
-  right: 28px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 3000;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
 

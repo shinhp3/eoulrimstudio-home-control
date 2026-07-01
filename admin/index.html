@@ -29,7 +29,7 @@
         <span class="admin-eyebrow">ADMIN</span>
         <h1>포트폴리오 관리</h1>
       </div>
-      <button type="button" id="btn-add" class="btn btn-primary">+ 새 항목</button>
+      <button type="button" id="btn-add" class="btn btn-primary">+ 새 항목<span id="draft-badge" class="draft-badge hidden">임시저장</span></button>
     </header>
 
     <main class="admin-main">
@@ -127,8 +127,10 @@
     </div>
 
     <footer class="editor-footer">
-      <span class="editor-footer-hint">Ctrl + S 저장 · Esc 닫기</span>
+      <span class="editor-footer-hint" id="editor-footer-hint">Ctrl + S 저장 · Esc 닫기</span>
       <div class="editor-footer-actions">
+        <button type="button" id="btn-draft-save" class="btn btn-muted hidden">임시저장</button>
+        <button type="button" id="btn-draft-clear" class="btn btn-muted hidden">임시저장 삭제</button>
         <button type="button" id="btn-cancel-footer" class="btn">취소</button>
         <button type="submit" form="item-form" class="btn btn-primary">저장</button>
       </div>

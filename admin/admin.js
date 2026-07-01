@@ -2,6 +2,7 @@ const WORKER_BASE = 'https://eoulrimstudio-upload.eoulrimstudio.workers.dev';
 const SITE_BASE = 'https://www.eoulrimstudio.com';
 const AUTH_COOKIE = 'eoulrim_admin_auth';
 const AUTH_MAX_AGE = 30 * 24 * 60 * 60;
+const DRAFT_KEY = 'eoulrim_admin_new_item_draft';
 
 let portfolioSha = '';
 let portfolioItems = [];
@@ -26,6 +27,10 @@ const itemForm = document.getElementById('item-form');
 const btnAdd = document.getElementById('btn-add');
 const btnCancel = document.getElementById('btn-cancel');
 const btnCancelFooter = document.getElementById('btn-cancel-footer');
+const btnDraftSave = document.getElementById('btn-draft-save');
+const btnDraftClear = document.getElementById('btn-draft-clear');
+const draftBadge = document.getElementById('draft-badge');
+const editorFooterHint = document.getElementById('editor-footer-hint');
 const formDirtyBadge = document.getElementById('form-dirty-badge');
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file-input');
@@ -285,6 +290,7 @@ authForm.addEventListener('submit', async (e) => {
 async function showApp() {
   authScreen.classList.add('hidden');
   appEl.classList.remove('hidden');
+  updateDraftControls();
   showLoading(true);
   try {
     await fetchPortfolio();
@@ -462,6 +468,7 @@ function openEditor() {
   formPanel.classList.remove('hidden');
   formPanel.querySelector('.editor-body')?.scrollTo(0, 0);
   document.body.style.overflow = 'hidden';
+  updateDraftControls();
   setTimeout(() => itemForm.elements.title?.focus(), 50);
 }
 
@@ -482,9 +489,139 @@ function closeForm() {
   formImages = [];
   itemForm.reset();
   markFormClean();
+  updateDraftControls();
 }
 
-function openAddForm() {
+// ── Draft (new item only, localStorage) ──
+function readDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function hasDraft() {
+  const draft = readDraft();
+  return Boolean(draft && (draft.title || draft.year || draft.type || draft.service || draft.kicker || draft.description || draft.images?.length));
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+  updateDraftControls();
+}
+
+function updateDraftControls() {
+  const draftExists = hasDraft();
+  if (draftBadge) draftBadge.classList.toggle('hidden', !draftExists);
+
+  const isNewForm = !formPanel.classList.contains('hidden') && !editingId;
+  if (btnDraftSave) btnDraftSave.classList.toggle('hidden', !isNewForm);
+  if (btnDraftClear) btnDraftClear.classList.toggle('hidden', !isNewForm || !draftExists);
+
+  if (editorFooterHint && isNewForm) {
+    editorFooterHint.textContent = draftExists
+      ? '임시저장됨 · Ctrl + S 정식 저장 · Esc 닫기'
+      : 'Ctrl + S 저장 · Esc 닫기';
+    editorFooterHint.classList.toggle('is-draft', draftExists);
+  }
+}
+
+function collectDraftPayload() {
+  return {
+    savedAt: new Date().toISOString(),
+    title: itemForm.elements.title.value,
+    year: itemForm.elements.year.value,
+    registeredAt: itemForm.elements.registeredAt.value,
+    type: itemForm.elements.type.value,
+    service: itemForm.elements.service.value,
+    kicker: itemForm.elements.kicker.value,
+    description: itemForm.elements.description.value,
+    images: [],
+  };
+}
+
+async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function dataUrlToFile(dataUrl, name, mime) {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  return new File([blob], name, { type: mime || blob.type });
+}
+
+async function saveDraft() {
+  if (editingId) return;
+
+  const draft = collectDraftPayload();
+  for (const img of formImages) {
+    if (img.type !== 'new') continue;
+    draft.images.push({
+      name: img.file.name,
+      mime: img.file.type,
+      dataUrl: await fileToDataUrl(img.file),
+    });
+  }
+
+  const isEmpty = !draft.title && !draft.year && !draft.type && !draft.service
+    && !draft.kicker && !draft.description && draft.images.length === 0;
+  if (isEmpty) {
+    showToast('저장할 내용이 없습니다.', 'error');
+    return;
+  }
+
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    markFormClean();
+    updateDraftControls();
+    showToast('임시저장되었습니다.');
+  } catch {
+    showToast('임시저장 실패. 이미지 용량이 너무 클 수 있습니다.', 'error');
+  }
+}
+
+async function applyDraft(draft) {
+  editingId = null;
+  if (editorMode) editorMode.textContent = 'NEW · DRAFT';
+  formTitle.textContent = '새 항목 추가 (임시저장)';
+
+  itemForm.elements.title.value = draft.title || '';
+  itemForm.elements.year.value = draft.year || '';
+  itemForm.elements.registeredAt.value = draft.registeredAt || todayISO();
+  itemForm.elements.type.value = draft.type || '';
+  itemForm.elements.service.value = draft.service || '';
+  itemForm.elements.kicker.value = draft.kicker || '';
+  itemForm.elements.description.value = draft.description || '';
+
+  formImages.forEach((img) => {
+    if (img.type === 'new' && img.preview) URL.revokeObjectURL(img.preview);
+  });
+  formImages = [];
+
+  for (const img of draft.images || []) {
+    try {
+      const file = await dataUrlToFile(img.dataUrl, img.name || 'image.png', img.mime);
+      formImages.push({ type: 'new', file, preview: URL.createObjectURL(file) });
+    } catch (err) {
+      console.warn('임시저장 이미지 복원 실패:', err);
+    }
+  }
+
+  renderImagePreviews();
+  markFormClean();
+  updateDraftControls();
+  openEditor();
+}
+
+function openAddFormEmpty() {
   editingId = null;
   if (editorMode) editorMode.textContent = 'NEW';
   formTitle.textContent = '새 항목 추가';
@@ -493,7 +630,21 @@ function openAddForm() {
   formImages = [];
   renderImagePreviews();
   markFormClean();
+  updateDraftControls();
   openEditor();
+}
+
+async function openAddForm() {
+  const draft = readDraft();
+  if (draft && hasDraft()) {
+    const saved = draft.savedAt ? new Date(draft.savedAt).toLocaleString('ko-KR') : '';
+    const load = confirm(`임시저장된 새 항목이 있습니다.${saved ? `\n(${saved})` : ''}\n\n불러오시겠습니까?`);
+    if (load) {
+      await applyDraft(draft);
+      return;
+    }
+  }
+  openAddFormEmpty();
 }
 
 function openEditForm(id) {
@@ -513,12 +664,19 @@ function openEditForm(id) {
   formImages = (item.images || []).map((path) => ({ type: 'existing', path }));
   renderImagePreviews();
   markFormClean();
+  updateDraftControls();
   openEditor();
 }
 
-btnAdd.addEventListener('click', openAddForm);
+btnAdd.addEventListener('click', () => { openAddForm(); });
 btnCancel.addEventListener('click', tryCloseForm);
 btnCancelFooter?.addEventListener('click', tryCloseForm);
+btnDraftSave?.addEventListener('click', () => { saveDraft(); });
+btnDraftClear?.addEventListener('click', () => {
+  if (!confirm('임시저장된 내용을 삭제하시겠습니까?')) return;
+  clearDraft();
+  showToast('임시저장이 삭제되었습니다.');
+});
 
 itemForm.addEventListener('input', markFormDirty);
 itemForm.addEventListener('change', markFormDirty);
@@ -707,6 +865,8 @@ itemForm.addEventListener('submit', async (e) => {
 
     await fetchPortfolio();
     await savePortfolio(updatedItems, portfolioSha);
+
+    if (!wasEdit) clearDraft();
 
     closeForm();
     renderList();
