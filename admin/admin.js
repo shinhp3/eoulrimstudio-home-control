@@ -208,6 +208,16 @@ function todayISO() {
   return `${y}-${m}-${day}`;
 }
 
+function formatRegisteredDate(item) {
+  const raw = item?.registeredAt;
+  if (raw) {
+    const match = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}.${match[2]}.${match[3]}`;
+    return String(raw);
+  }
+  return '—';
+}
+
 function buildPortfolioItem(base, oldItem) {
   const item = applyHiddenField({ ...base }, oldItem ? isItemHidden(oldItem) : false);
   if (base.registeredAt) {
@@ -310,8 +320,7 @@ function renderList() {
       return `
         <article class="item-card${hidden ? ' is-hidden' : ''}" data-id="${item.id}">
           <div class="item-card-top">
-            <span class="item-card-order">${index + 1}</span>
-            ${hidden ? '<span class="item-card-hidden-label">숨김</span>' : ''}
+            ${hidden ? '<span class="item-card-hidden-label">숨김</span>' : '<span class="item-card-top-spacer"></span>'}
             <div class="item-card-order-controls">
               <button type="button" class="btn-icon" data-action="move-up" data-id="${item.id}" aria-label="앞으로" ${index === 0 ? 'disabled' : ''}>←</button>
               <button type="button" class="btn-icon" data-action="move-down" data-id="${item.id}" aria-label="뒤로" ${index === lastIndex ? 'disabled' : ''}>→</button>
@@ -323,7 +332,7 @@ function renderList() {
             ${hidden ? '<div class="item-card-hidden-overlay" aria-hidden="true"><span>숨김</span><small>사이트에 미노출</small></div>' : ''}
           </div>
           <div class="item-card-body">
-            <div class="item-card-id">#${item.id}</div>
+            <div class="item-card-date">${escapeHtml(formatRegisteredDate(item))}</div>
             <div class="item-card-title">${escapeHtml(item.title)}</div>
             <div class="item-card-actions">
               <button type="button" class="btn btn-sm" data-action="edit" data-id="${item.id}">수정</button>
