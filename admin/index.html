@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>포트폴리오 관리 — 어울림스튜디오</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <div id="auth-screen" class="auth-screen hidden">
+    <div class="auth-box">
+      <p class="auth-eyebrow">EOULRIM STUDIO</p>
+      <h1>포트폴리오 관리</h1>
+      <p class="auth-desc">관리자 비밀번호를 입력하세요.</p>
+      <form id="auth-form">
+        <label class="sr-only" for="auth-password">비밀번호</label>
+        <input id="auth-password" type="password" placeholder="비밀번호" autocomplete="current-password" required>
+        <button type="submit" class="btn btn-primary btn-block">로그인</button>
+      </form>
+      <p id="auth-error" class="auth-error"></p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="admin-header">
+      <div class="admin-header-brand">
+        <span class="admin-eyebrow">ADMIN</span>
+        <h1>포트폴리오 관리</h1>
+      </div>
+      <button type="button" id="btn-add" class="btn btn-primary">+ 새 항목</button>
+    </header>
+
+    <main class="admin-main">
+      <div class="list-toolbar">
+        <div>
+          <h2>항목 목록</h2>
+          <p class="list-hint">← → 버튼 또는 ⠿ 드래그로 순서 변경 · 저장 즉시 사이트 반영</p>
+        </div>
+        <span id="item-count" class="item-count">0개</span>
+      </div>
+      <div id="item-grid" class="item-grid"></div>
+    </main>
+  </div>
+
+  <div id="form-panel" class="editor-panel hidden">
+    <header class="editor-header">
+      <button type="button" id="btn-cancel" class="btn btn-ghost">← 목록</button>
+      <div class="editor-header-title">
+        <span class="editor-mode" id="editor-mode">새 항목</span>
+        <h2 id="form-title">새 항목 추가</h2>
+      </div>
+      <span id="form-dirty-badge" class="form-dirty-badge hidden">저장 안 됨</span>
+    </header>
+
+    <div class="editor-body">
+      <form id="item-form" class="editor-form">
+
+        <section class="form-block">
+          <header class="form-block-header">
+            <h3>기본 정보</h3>
+            <p>포트폴리오 카드와 상세 페이지에 표시되는 핵심 정보입니다.</p>
+          </header>
+          <div class="form-fields">
+            <div class="form-group form-group--full">
+              <label for="field-title">제목 <span class="required">*</span></label>
+              <input id="field-title" name="title" type="text" placeholder="작품 제목을 입력하세요" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="field-year">연도</label>
+                <input id="field-year" name="year" type="text" placeholder="2026">
+              </div>
+              <div class="form-group">
+                <label for="field-type">제작 방식</label>
+                <input id="field-type" name="type" type="text" placeholder="솔리드 캐스팅">
+              </div>
+            </div>
+            <div class="form-group form-group--full">
+              <label for="field-service">작업 항목</label>
+              <input id="field-service" name="service" type="text" placeholder="3D 모델링 · 몰드 제작 · 테스트">
+              <span class="field-hint">여러 항목은 · 로 구분합니다.</span>
+            </div>
+            <div class="form-group form-group--full">
+              <label class="visibility-toggle">
+                <input id="field-hidden" name="hidden" type="checkbox">
+                <span class="visibility-toggle-box" aria-hidden="true"></span>
+                <span class="visibility-toggle-text">
+                  <strong>게시물 숨기기</strong>
+                  <small>체크하면 사이트에 노출되지 않습니다.</small>
+                </span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-block">
+          <header class="form-block-header">
+            <h3>소개 텍스트</h3>
+            <p>카드 요약과 상세 설명에 사용됩니다.</p>
+          </header>
+          <div class="form-fields">
+            <div class="form-group form-group--full">
+              <label for="field-kicker">한 줄 요약</label>
+              <input id="field-kicker" name="kicker" type="text" placeholder="손에 닿는 곡선을 정확하게 구현합니다.">
+            </div>
+            <div class="form-group form-group--full">
+              <label for="field-description">상세 설명</label>
+              <textarea id="field-description" name="description" rows="6" placeholder="작품 제작 과정, 특징, 기술적 포인트 등을 자유롭게 작성하세요."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-block">
+          <header class="form-block-header">
+            <h3>이미지</h3>
+            <p>첫 번째가 대표 이미지입니다. 미리보기를 드래그해 순서를 바꿀 수 있습니다.</p>
+          </header>
+          <div class="form-fields">
+            <div id="dropzone" class="dropzone">
+              <div class="dropzone-icon">+</div>
+              <p class="dropzone-title">이미지 추가</p>
+              <p class="dropzone-desc">클릭 또는 드래그앤드롭 · 여러 장 선택 가능</p>
+            </div>
+            <input id="file-input" type="file" accept="image/*" multiple hidden>
+            <div id="image-previews" class="image-previews"></div>
+          </div>
+        </section>
+
+      </form>
+    </div>
+
+    <footer class="editor-footer">
+      <span class="editor-footer-hint">Ctrl + S 저장 · Esc 닫기</span>
+      <div class="editor-footer-actions">
+        <button type="button" id="btn-cancel-footer" class="btn">취소</button>
+        <button type="submit" form="item-form" class="btn btn-primary">저장</button>
+      </div>
+    </footer>
+  </div>
+
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
