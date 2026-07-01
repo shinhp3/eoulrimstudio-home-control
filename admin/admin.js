@@ -293,21 +293,24 @@ function renderList() {
         <article class="item-card${hidden ? ' is-hidden' : ''}" data-id="${item.id}">
           <div class="item-card-top">
             <span class="item-card-order">${index + 1}</span>
+            ${hidden ? '<span class="item-card-hidden-label">숨김</span>' : ''}
             <div class="item-card-order-controls">
               <button type="button" class="btn-icon" data-action="move-up" data-id="${item.id}" aria-label="앞으로" ${index === 0 ? 'disabled' : ''}>←</button>
               <button type="button" class="btn-icon" data-action="move-down" data-id="${item.id}" aria-label="뒤로" ${index === lastIndex ? 'disabled' : ''}>→</button>
               <button type="button" class="item-card-drag" data-drag-handle draggable="true" aria-label="드래그하여 순서 변경">⠿</button>
             </div>
           </div>
-          ${thumb ? `<img class="item-card-thumb" src="${thumb}" alt="">` : '<div class="item-card-thumb"></div>'}
+          <div class="item-card-media">
+            ${thumb ? `<img class="item-card-thumb" src="${thumb}" alt="">` : '<div class="item-card-thumb"></div>'}
+            ${hidden ? '<div class="item-card-hidden-overlay" aria-hidden="true"><span>숨김</span><small>사이트에 미노출</small></div>' : ''}
+          </div>
           <div class="item-card-body">
             <div class="item-card-id">#${item.id}</div>
-            <span class="item-card-status">숨김</span>
             <div class="item-card-title">${escapeHtml(item.title)}</div>
             <div class="item-card-actions">
               <button type="button" class="btn btn-sm" data-action="edit" data-id="${item.id}">수정</button>
-              <button type="button" class="btn btn-sm btn-muted" data-action="toggle-hidden" data-id="${item.id}">
-                ${hidden ? '공개' : '숨기기'}
+              <button type="button" class="btn btn-sm${hidden ? ' btn-primary' : ' btn-muted'}" data-action="toggle-hidden" data-id="${item.id}">
+                ${hidden ? '공개하기' : '숨기기'}
               </button>
               <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-id="${item.id}">삭제</button>
             </div>
@@ -478,7 +481,6 @@ function openEditForm(id) {
   itemForm.elements.service.value = item.service || '';
   itemForm.elements.kicker.value = item.kicker || '';
   itemForm.elements.description.value = item.description || '';
-  itemForm.elements.hidden.checked = isItemHidden(item);
   formImages = (item.images || []).map((path) => ({ type: 'existing', path }));
   renderImagePreviews();
   markFormClean();
@@ -653,7 +655,7 @@ itemForm.addEventListener('submit', async (e) => {
       images: imagePaths,
       kicker: itemForm.elements.kicker.value.trim(),
       description: itemForm.elements.description.value.trim(),
-    }, itemForm.elements.hidden.checked);
+    }, oldItem ? isItemHidden(oldItem) : false);
 
     const removedPaths = oldImages.filter((p) => !imagePaths.includes(p));
     for (const path of removedPaths) {
@@ -701,7 +703,7 @@ async function toggleItemVisibility(id) {
     );
     await savePortfolio(updatedItems, portfolioSha);
     renderList();
-    showToast(willHide ? '항목이 숨겨졌습니다.' : '항목이 공개되었습니다.');
+    showToast(willHide ? '항목이 숨겨졌습니다. 사이트에 표시되지 않습니다.' : '항목이 다시 공개되었습니다.', willHide ? 'info' : 'success');
   } catch (err) {
     showToast(err.message || '상태 변경 실패', 'error');
   } finally {

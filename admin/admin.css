@@ -212,9 +212,74 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--gray-200);
   background: var(--gray-50);
+}
+
+.item-card.is-hidden .item-card-top {
+  background: var(--black);
+  border-bottom-color: var(--black);
+}
+
+.item-card.is-hidden .item-card-order {
+  color: var(--gray-400);
+}
+
+.item-card-hidden-label {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.item-card-media {
+  position: relative;
+}
+
+.item-card-hidden-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.62);
+  color: var(--white);
+  pointer-events: none;
+}
+
+.item-card-hidden-overlay span {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.item-card-hidden-overlay small {
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+.item-card.is-hidden {
+  border: 2px dashed var(--gray-400);
+  background: var(--gray-100);
+}
+
+.item-card.is-hidden .item-card-thumb {
+  filter: grayscale(1) brightness(0.85);
+}
+
+.item-card.is-hidden .item-card-body {
+  background: var(--gray-50);
+}
+
+.item-card.is-hidden .item-card-title {
+  color: var(--gray-500);
 }
 
 .item-card-order {
@@ -306,31 +371,6 @@ body {
   letter-spacing: -0.01em;
 }
 
-.item-card.is-hidden {
-  opacity: 0.55;
-}
-
-.item-card.is-hidden .item-card-thumb {
-  filter: grayscale(1);
-}
-
-.item-card-status {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  margin-bottom: 8px;
-  border: 1px solid var(--black);
-  background: var(--black);
-  color: var(--white);
-}
-
-.item-card:not(.is-hidden) .item-card-status {
-  display: none;
-}
-
 .item-card-actions {
   display: flex;
   flex-wrap: wrap;
@@ -345,57 +385,6 @@ body {
   border: 1px dashed var(--gray-300);
   font-size: 14px;
   background: var(--gray-50);
-}
-
-.visibility-toggle {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 16px 18px;
-  border: 1px solid var(--gray-200);
-  background: var(--gray-50);
-  cursor: pointer;
-}
-
-.visibility-toggle input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.visibility-toggle-box {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  margin-top: 2px;
-  border: 1px solid var(--black);
-  background: var(--white);
-  position: relative;
-}
-
-.visibility-toggle input:checked + .visibility-toggle-box::after {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  background: var(--black);
-}
-
-.visibility-toggle-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.visibility-toggle-text strong {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.visibility-toggle-text small {
-  font-size: 12px;
-  color: var(--gray-500);
-  line-height: 1.5;
 }
 
 .btn-muted {
@@ -846,6 +835,11 @@ body {
 
 .toast-success {
   background: var(--black);
+}
+
+.toast-info {
+  background: var(--gray-800);
+  border-color: var(--gray-800);
 }
 
 .toast-error {
