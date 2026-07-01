@@ -1,5 +1,5 @@
 const WORKER_BASE = 'https://eoulrimstudio-upload.eoulrimstudio.workers.dev';
-const SITE_BASE = 'https://www.eoulrimstudio.com';
+const REPO_RAW_BASE = 'https://raw.githubusercontent.com/shinhp3/eoulrimstudio-home/main';
 const AUTH_COOKIE = 'eoulrim_admin_auth';
 const AUTH_MAX_AGE = 30 * 24 * 60 * 60;
 const DRAFT_KEY = 'eoulrim_admin_new_item_draft';
@@ -100,7 +100,8 @@ async function persistOrder(items, successMessage = '순서가 저장되었습�
 
 function imageUrl(path) {
   const clean = path.replace(/^\//, '');
-  return `${SITE_BASE}/${clean}`;
+  const cache = portfolioSha ? `?v=${encodeURIComponent(portfolioSha.slice(0, 8))}` : '';
+  return `${REPO_RAW_BASE}/${clean}${cache}`;
 }
 
 // ── API ──
