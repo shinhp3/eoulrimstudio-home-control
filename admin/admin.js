@@ -100,10 +100,7 @@ async function persistOrder(items, successMessage = '순서가 저장되었습�
 
 function imageUrl(path) {
   const clean = path.replace(/^\//, '');
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-    return `${SITE_BASE}/${clean}`;
-  }
-  return `/${clean}`;
+  return `${SITE_BASE}/${clean}`;
 }
 
 // ── API ──
