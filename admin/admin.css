@@ -1145,6 +1145,64 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* ── Confirm dialog ── */
+.confirm-dialog:not(.hidden) {
+  display: grid !important;
+}
+
+.confirm-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.confirm-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: default;
+}
+
+.confirm-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  padding: 28px 28px 24px;
+  background: var(--white);
+  border: 1px solid var(--black);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+.confirm-dialog__title {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+
+.confirm-dialog__message {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--gray-600);
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+body.confirm-open {
+  overflow: hidden;
+}
+
 /* ── Toast ── */
 .toast-container {
   position: fixed;

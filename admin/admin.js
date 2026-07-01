@@ -41,7 +41,14 @@ const imagePreviews = document.getElementById('image-previews');
 const previewCard = document.getElementById('preview-card');
 const previewDetail = document.getElementById('preview-detail');
 const loadingOverlay = document.getElementById('loading-overlay');
+let confirmDialog = document.getElementById('confirm-dialog');
+let confirmDialogTitle = document.getElementById('confirm-dialog-title');
+let confirmDialogMessage = document.getElementById('confirm-dialog-message');
+let confirmDialogOk = document.getElementById('confirm-dialog-ok');
+let confirmDialogCancel = document.getElementById('confirm-dialog-cancel');
 const toastContainer = document.getElementById('toast-container');
+
+let confirmResolve = null;
 
 // ── Cookie ──
 function getCookie(name) {
@@ -60,6 +67,96 @@ function isAuthenticated() {
 // ── UI helpers ──
 function showLoading(show) {
   loadingOverlay.classList.toggle('hidden', !show);
+}
+
+function showConfirm({
+  title = '확인',
+  message = '',
+  confirmLabel = '확인',
+  cancelLabel = '취소',
+  danger = false,
+} = {}) {
+  if (!confirmDialog || !confirmDialogTitle || !confirmDialogMessage || !confirmDialogOk || !confirmDialogCancel) {
+    return Promise.resolve(window.confirm(message ? `${title}\n\n${message}` : title));
+  }
+
+  return new Promise((resolve) => {
+    if (confirmResolve) confirmResolve(false);
+
+    confirmResolve = resolve;
+    confirmDialogTitle.textContent = title;
+    confirmDialogMessage.textContent = message;
+    confirmDialogOk.textContent = confirmLabel;
+    confirmDialogCancel.textContent = cancelLabel;
+    confirmDialogOk.classList.toggle('btn-danger', danger);
+    confirmDialogOk.classList.toggle('btn-primary', !danger);
+
+    confirmDialog.classList.remove('hidden');
+    confirmDialog.removeAttribute('hidden');
+    confirmDialog.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('confirm-open');
+    requestAnimationFrame(() => confirmDialogCancel.focus());
+  });
+}
+
+function closeConfirm(result) {
+  if (!confirmDialog) return;
+  confirmDialog.classList.add('hidden');
+  confirmDialog.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('confirm-open');
+  if (confirmResolve) {
+    confirmResolve(result);
+    confirmResolve = null;
+  }
+}
+
+function buildConfirmDialog() {
+  if (document.getElementById('confirm-dialog')) return;
+
+  const el = document.createElement('div');
+  el.id = 'confirm-dialog';
+  el.className = 'confirm-dialog hidden';
+  el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = `
+    <button type="button" class="confirm-dialog__backdrop" data-confirm-cancel aria-label="닫기"></button>
+    <div class="confirm-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-message">
+      <h2 id="confirm-dialog-title" class="confirm-dialog__title">삭제하시겠습니까?</h2>
+      <p id="confirm-dialog-message" class="confirm-dialog__message"></p>
+      <div class="confirm-dialog__actions">
+        <button type="button" id="confirm-dialog-cancel" class="btn">취소</button>
+        <button type="button" id="confirm-dialog-ok" class="btn btn-danger">삭제</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+}
+
+function initConfirmDialog() {
+  buildConfirmDialog();
+
+  const dialog = document.getElementById('confirm-dialog');
+  const titleEl = document.getElementById('confirm-dialog-title');
+  const messageEl = document.getElementById('confirm-dialog-message');
+  const okEl = document.getElementById('confirm-dialog-ok');
+  const cancelEl = document.getElementById('confirm-dialog-cancel');
+  if (!dialog || !titleEl || !messageEl || !okEl || !cancelEl) return;
+
+  // Re-bind module refs when dialog is injected at runtime.
+  confirmDialog = dialog;
+  confirmDialogTitle = titleEl;
+  confirmDialogMessage = messageEl;
+  confirmDialogOk = okEl;
+  confirmDialogCancel = cancelEl;
+
+  cancelEl.addEventListener('click', () => closeConfirm(false));
+  okEl.addEventListener('click', () => closeConfirm(true));
+  dialog.querySelectorAll('[data-confirm-cancel]').forEach((el) => {
+    el.addEventListener('click', () => closeConfirm(false));
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (dialog.classList.contains('hidden')) return;
+    if (e.key === 'Escape') closeConfirm(false);
+  });
 }
 
 function showToast(message, type = 'success') {
@@ -567,7 +664,20 @@ itemGrid.addEventListener('click', async (e) => {
 
   if (action === 'edit') openEditForm(id);
   if (action === 'toggle-hidden') toggleItemVisibility(id);
-  if (action === 'delete') deleteItem(id);
+  if (action === 'delete') {
+    const item = portfolioItems.find((it) => it.id === id);
+    if (!item) return;
+    const name = item.title || `항목 #${id}`;
+    const ok = await showConfirm({
+      title: '삭제하시겠습니까?',
+      message: `"${name}" 항목이 사이트에서 영구적으로 제거됩니다.`,
+      confirmLabel: '삭제',
+      cancelLabel: '취소',
+      danger: true,
+    });
+    if (!ok) return;
+    deleteItem(id);
+  }
 
   if (action === 'move-up' || action === 'move-down') {
     const reordered = movePortfolioItem(id, action === 'move-up' ? 'up' : 'down');
@@ -1126,7 +1236,6 @@ async function toggleItemVisibility(id) {
 async function deleteItem(id) {
   const item = portfolioItems.find((it) => it.id === id);
   if (!item) return;
-  if (!confirm(`"${item.title}" 항목을 정말 삭제하시겠습니까?`)) return;
 
   showLoading(true);
   try {
@@ -1148,6 +1257,7 @@ async function deleteItem(id) {
 }
 
 // ── Init ──
+initConfirmDialog();
 initYearSelect();
 initListDragDrop();
 initImageDragDrop();

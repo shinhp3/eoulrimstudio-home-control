@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=12">
 </head>
 <body>
 
@@ -169,8 +169,20 @@
     <div class="loading-spinner"></div>
   </div>
 
+  <div id="confirm-dialog" class="confirm-dialog hidden" aria-hidden="true">
+    <button type="button" class="confirm-dialog__backdrop" data-confirm-cancel aria-label="닫기"></button>
+    <div class="confirm-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-message">
+      <h2 id="confirm-dialog-title" class="confirm-dialog__title">삭제하시겠습니까?</h2>
+      <p id="confirm-dialog-message" class="confirm-dialog__message"></p>
+      <div class="confirm-dialog__actions">
+        <button type="button" id="confirm-dialog-cancel" class="btn">취소</button>
+        <button type="button" id="confirm-dialog-ok" class="btn btn-danger">삭제</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="admin.js?v=9"></script>
+  <script src="admin.js?v=12"></script>
 </body>
 </html>
