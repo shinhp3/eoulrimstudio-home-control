@@ -854,9 +854,13 @@ async function handlePutPortfolio(request, env) {
 }
 
 async function gitCommitMultipleFiles(token, username, repo, files, message) {
-  const refUrl =
-    GITHUB_API + "/repos/" + username + "/" + repo + "/git/ref/heads/" + DEFAULT_BRANCH;
-  const ref = await githubJson("GET", refUrl, token);
+  const refName = "heads/" + DEFAULT_BRANCH;
+  const getRefUrl =
+    GITHUB_API + "/repos/" + username + "/" + repo + "/git/ref/" + refName;
+  const updateRefUrl =
+    GITHUB_API + "/repos/" + username + "/" + repo + "/git/refs/" + refName;
+
+  const ref = await githubJson("GET", getRefUrl, token);
   const parentSha = ref.object.sha;
 
   const commitObj = await githubJson(
@@ -896,7 +900,7 @@ async function gitCommitMultipleFiles(token, username, repo, files, message) {
     { message, tree: tree.sha, parents: [parentSha] }
   );
 
-  await githubJson("PATCH", refUrl, token, { sha: newCommit.sha });
+  await githubJson("PATCH", updateRefUrl, token, { sha: newCommit.sha });
 }
 
 function safePortfolioImagePath(projectId, filename) {

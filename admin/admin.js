@@ -204,6 +204,9 @@ async function uploadPortfolioImagesBatch(projectId, uploads) {
     if (data.success && Array.isArray(data.paths) && data.paths.length === uploads.length) {
       return uploads.map((u, i) => ({ index: u.index, path: data.paths[i] }));
     }
+  } else {
+    const err = await res.json().catch(() => ({}));
+    console.warn('배치 업로드 실패:', err.error || res.status);
   }
 
   showToast('배치 업로드 불가 — 개별 업로드로 진행합니다.', 'info');
