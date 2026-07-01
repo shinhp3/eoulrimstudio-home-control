@@ -200,6 +200,24 @@ function imageFilename(numId, index) {
   return `pj_${numId}_sub_${index}.png`;
 }
 
+function todayISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function buildPortfolioItem(base, oldItem) {
+  const item = applyHiddenField({ ...base }, oldItem ? isItemHidden(oldItem) : false);
+  if (base.registeredAt) {
+    item.registeredAt = base.registeredAt;
+  } else {
+    delete item.registeredAt;
+  }
+  return item;
+}
+
 function isItemHidden(item) {
   return item?.hidden === true;
 }
@@ -462,6 +480,7 @@ function openAddForm() {
   if (editorMode) editorMode.textContent = 'NEW';
   formTitle.textContent = '새 항목 추가';
   itemForm.reset();
+  itemForm.elements.registeredAt.value = todayISO();
   formImages = [];
   renderImagePreviews();
   markFormClean();
@@ -477,6 +496,7 @@ function openEditForm(id) {
   formTitle.textContent = item.title || `항목 #${id}`;
   itemForm.elements.title.value = item.title || '';
   itemForm.elements.year.value = item.year || '';
+  itemForm.elements.registeredAt.value = item.registeredAt || '';
   itemForm.elements.type.value = item.type || '';
   itemForm.elements.service.value = item.service || '';
   itemForm.elements.kicker.value = item.kicker || '';
@@ -646,7 +666,9 @@ itemForm.addEventListener('submit', async (e) => {
       }
     }
 
-    const newItem = applyHiddenField({
+    const registeredAt = itemForm.elements.registeredAt.value || todayISO();
+
+    const newItem = buildPortfolioItem({
       id,
       title,
       year: itemForm.elements.year.value.trim(),
@@ -655,7 +677,8 @@ itemForm.addEventListener('submit', async (e) => {
       images: imagePaths,
       kicker: itemForm.elements.kicker.value.trim(),
       description: itemForm.elements.description.value.trim(),
-    }, oldItem ? isItemHidden(oldItem) : false);
+      registeredAt,
+    }, oldItem);
 
     const removedPaths = oldImages.filter((p) => !imagePaths.includes(p));
     for (const path of removedPaths) {
