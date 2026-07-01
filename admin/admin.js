@@ -87,8 +87,7 @@ async function persistOrder(items, successMessage = '순서가 저장되었습�
   renderList();
 
   try {
-    await fetchPortfolio();
-    await savePortfolio(items, portfolioSha);
+    await persistPortfolio(items);
     showToast(successMessage);
     return true;
   } catch (err) {
@@ -154,15 +153,31 @@ async function fetchPortfolio() {
 async function savePortfolio(items, sha) {
   const res = await apiFetch('/portfolio', {
     method: 'PUT',
-    body: JSON.stringify({ items, sha }),
+    body: JSON.stringify({ items, sha: sha || portfolioSha }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`저장 실패 (${res.status})${text ? ': ' + text : ''}`);
+    const err = new Error(`저장 실패 (${res.status})${text ? ': ' + text : ''}`);
+    err.status = res.status;
+    throw err;
   }
-  const newSha = res.headers.get('X-GitHub-Content-Sha');
+  const data = await res.json().catch(() => ({}));
+  const newSha = res.headers.get('X-GitHub-Content-Sha') || data.sha;
   if (newSha) portfolioSha = newSha;
   portfolioItems = items;
+}
+
+async function persistPortfolio(items) {
+  try {
+    await savePortfolio(items, portfolioSha);
+  } catch (err) {
+    if (err.status === 409) {
+      await fetchPortfolio();
+      await savePortfolio(items, portfolioSha);
+      return;
+    }
+    throw err;
+  }
 }
 
 async function uploadPortfolioImageOne(projectId, filename, file) {
@@ -217,12 +232,37 @@ async function uploadPortfolioImagesBatch(projectId, uploads) {
   return results;
 }
 
-async function deletePortfolioImage(path) {
+async function deletePortfolioImageOne(path) {
   const res = await apiFetch('/portfolio-image', {
     method: 'DELETE',
     body: JSON.stringify({ path }),
   });
   if (!res.ok) throw new Error(`이미지 삭제 실패: ${path}`);
+}
+
+async function deletePortfolioImagesBatch(paths) {
+  const unique = [...new Set(paths.filter(Boolean))];
+  if (unique.length === 0) return;
+  if (unique.length === 1) {
+    await deletePortfolioImageOne(unique[0]);
+    return;
+  }
+
+  const res = await apiFetch('/portfolio-image', {
+    method: 'DELETE',
+    body: JSON.stringify({ paths: unique }),
+  });
+
+  if (res.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (data.success) return;
+  }
+
+  await Promise.all(
+    unique.map((path) => deletePortfolioImageOne(path).catch((err) => {
+      console.warn('이미지 삭제 실패 (무시):', path, err);
+    }))
+  );
 }
 
 function fileToBase64(file) {
@@ -911,11 +951,11 @@ itemForm.addEventListener('submit', async (e) => {
     }, oldItem);
 
     const removedPaths = oldImages.filter((p) => !finalImagePaths.includes(p));
-    for (const path of removedPaths) {
+    if (removedPaths.length > 0) {
       try {
-        await deletePortfolioImage(path);
+        await deletePortfolioImagesBatch(removedPaths);
       } catch (err) {
-        console.warn('이미지 삭제 실패 (무시):', path, err);
+        console.warn('이미지 삭제 실패 (무시):', err);
       }
     }
 
@@ -926,8 +966,7 @@ itemForm.addEventListener('submit', async (e) => {
       updatedItems = [...portfolioItems, newItem];
     }
 
-    await fetchPortfolio();
-    await savePortfolio(updatedItems, portfolioSha);
+    await persistPortfolio(updatedItems);
 
     if (!wasEdit) clearDraft();
 
@@ -952,11 +991,11 @@ async function toggleItemVisibility(id) {
   const row = itemGrid.querySelector(`[data-id="${id}"]`);
   row?.classList.add('is-busy');
   try {
-    await fetchPortfolio();
-    const updatedItems = portfolioItems.map((it) =>
-      it.id === id ? applyHiddenField(it, willHide) : it
+    await persistPortfolio(
+      portfolioItems.map((it) =>
+        it.id === id ? applyHiddenField(it, willHide) : it
+      )
     );
-    await savePortfolio(updatedItems, portfolioSha);
     renderList();
     showToast(willHide ? '항목이 숨겨졌습니다. 사이트에 표시되지 않습니다.' : '항목이 다시 공개되었습니다.', willHide ? 'info' : 'success');
   } catch (err) {
@@ -974,15 +1013,12 @@ async function deleteItem(id) {
 
   showLoading(true);
   try {
-    await fetchPortfolio();
-
-    for (const path of item.images || []) {
-      await deletePortfolioImage(path);
+    if (item.images?.length) {
+      await deletePortfolioImagesBatch(item.images);
     }
 
     const updatedItems = portfolioItems.filter((it) => it.id !== id);
-    await fetchPortfolio();
-    await savePortfolio(updatedItems, portfolioSha);
+    await persistPortfolio(updatedItems);
 
     if (editingId === id) closeForm();
     renderList();

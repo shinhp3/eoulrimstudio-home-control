@@ -843,8 +843,16 @@ async function handlePutPortfolio(request, env) {
       GITHUB_API + "/repos/" + username + "/" + repo + "/contents/" + gitContentsPath(PORTFOLIO_FILE);
     const putBody = { message: "Update portfolio.json", content, branch: DEFAULT_BRANCH };
     if (typeof body.sha === "string" && body.sha.length > 0) putBody.sha = body.sha;
-    await githubJson("PUT", apiPath, token, putBody);
-    return jsonResponse({ success: true });
+    const result = await githubJson("PUT", apiPath, token, putBody);
+    const newSha =
+      result && result.content && typeof result.content.sha === "string" ? result.content.sha : "";
+    const headers = new Headers({
+      "Content-Type": "application/json; charset=utf-8",
+      ...corsHeaders(),
+    });
+    headers.set("Access-Control-Expose-Headers", "X-GitHub-Content-Sha");
+    if (newSha) headers.set("X-GitHub-Content-Sha", newSha);
+    return new Response(JSON.stringify({ success: true, sha: newSha }), { headers });
   } catch (e) {
     const msg = e.message || String(e);
     let status = 500;
@@ -901,6 +909,50 @@ async function gitCommitMultipleFiles(token, username, repo, files, message) {
   );
 
   await githubJson("PATCH", updateRefUrl, token, { sha: newCommit.sha });
+}
+
+async function gitCommitDeleteFiles(token, username, repo, relPaths, message) {
+  const refName = "heads/" + DEFAULT_BRANCH;
+  const getRefUrl =
+    GITHUB_API + "/repos/" + username + "/" + repo + "/git/ref/" + refName;
+  const updateRefUrl =
+    GITHUB_API + "/repos/" + username + "/" + repo + "/git/refs/" + refName;
+
+  const ref = await githubJson("GET", getRefUrl, token);
+  const parentSha = ref.object.sha;
+
+  const commitObj = await githubJson(
+    "GET",
+    GITHUB_API + "/repos/" + username + "/" + repo + "/git/commits/" + parentSha,
+    token
+  );
+  const baseTreeSha = commitObj.tree.sha;
+
+  const treeItems = relPaths.map((relPath) => ({
+    path: relPath,
+    mode: "100644",
+    sha: null,
+  }));
+
+  const tree = await githubJson(
+    "POST",
+    GITHUB_API + "/repos/" + username + "/" + repo + "/git/trees",
+    token,
+    { base_tree: baseTreeSha, tree: treeItems }
+  );
+
+  const newCommit = await githubJson(
+    "POST",
+    GITHUB_API + "/repos/" + username + "/" + repo + "/git/commits",
+    token,
+    { message, tree: tree.sha, parents: [parentSha] }
+  );
+
+  await githubJson("PATCH", updateRefUrl, token, { sha: newCommit.sha });
+}
+
+function isValidPortfolioImagePath(relPath) {
+  return typeof relPath === "string" && relPath.startsWith("assets/picture/pj_");
 }
 
 function safePortfolioImagePath(projectId, filename) {
@@ -1007,8 +1059,26 @@ async function handlePortfolioImageDelete(request, env) {
     } catch {
       return jsonResponse({ success: false, error: "JSON 본문을 읽을 수 없습니다." }, 400);
     }
+
+    if (Array.isArray(body.paths) && body.paths.length > 0) {
+      const relPaths = body.paths.filter(isValidPortfolioImagePath);
+      if (relPaths.length !== body.paths.length) {
+        return jsonResponse({ success: false, error: "잘못된 경로가 포함되어 있습니다." }, 400);
+      }
+      const label =
+        relPaths.length === 1 ? relPaths[0] : relPaths.length + " portfolio images";
+      await gitCommitDeleteFiles(
+        token,
+        username,
+        repo,
+        relPaths,
+        "Delete portfolio images (batch): " + label
+      );
+      return jsonResponse({ success: true, paths: relPaths });
+    }
+
     const relPath = body.path;
-    if (!relPath || typeof relPath !== "string" || !relPath.startsWith("assets/picture/pj_")) {
+    if (!isValidPortfolioImagePath(relPath)) {
       return jsonResponse({ success: false, error: "잘못된 경로입니다." }, 400);
     }
     const apiPath = GITHUB_API + "/repos/" + username + "/" + repo + "/contents/" + gitContentsPath(relPath);
