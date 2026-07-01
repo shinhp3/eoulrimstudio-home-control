@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>포트폴리오 관리 — 어울림스튜디오</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="admin.css">
 </head>
 <body>
@@ -55,7 +58,25 @@
     </header>
 
     <div class="editor-body">
+      <div class="editor-layout">
+        <div class="editor-main">
       <form id="item-form" class="editor-form">
+
+        <section class="form-block">
+          <header class="form-block-header">
+            <h3>이미지</h3>
+            <p>첫 번째가 대표 이미지입니다. 미리보기를 드래그해 순서를 바꿀 수 있습니다.</p>
+          </header>
+          <div class="form-fields">
+            <div id="dropzone" class="dropzone">
+              <div class="dropzone-icon">+</div>
+              <p class="dropzone-title">이미지 추가</p>
+              <p class="dropzone-desc">클릭 또는 드래그앤드롭 · 여러 장 선택 가능</p>
+            </div>
+            <input id="file-input" type="file" accept="image/*" multiple hidden>
+            <div id="image-previews" class="image-previews"></div>
+          </div>
+        </section>
 
         <section class="form-block">
           <header class="form-block-header">
@@ -70,7 +91,7 @@
             <div class="form-row">
               <div class="form-group">
                 <label for="field-year">연도</label>
-                <input id="field-year" name="year" type="text" placeholder="2026">
+                <select id="field-year" name="year"></select>
               </div>
               <div class="form-group">
                 <label for="field-registered-at">등록일</label>
@@ -107,23 +128,30 @@
           </div>
         </section>
 
-        <section class="form-block">
-          <header class="form-block-header">
-            <h3>이미지</h3>
-            <p>첫 번째가 대표 이미지입니다. 미리보기를 드래그해 순서를 바꿀 수 있습니다.</p>
-          </header>
-          <div class="form-fields">
-            <div id="dropzone" class="dropzone">
-              <div class="dropzone-icon">+</div>
-              <p class="dropzone-title">이미지 추가</p>
-              <p class="dropzone-desc">클릭 또는 드래그앤드롭 · 여러 장 선택 가능</p>
-            </div>
-            <input id="file-input" type="file" accept="image/*" multiple hidden>
-            <div id="image-previews" class="image-previews"></div>
-          </div>
-        </section>
-
       </form>
+        </div>
+
+        <aside class="editor-preview" aria-label="사이트 미리보기">
+          <div class="preview-panel">
+            <header class="preview-panel-header">
+              <h3>사이트 미리보기</h3>
+              <p>입력 내용이 실제 포트폴리오 페이지와 같은 형태로 표시됩니다.</p>
+            </header>
+
+            <section class="preview-section">
+              <h4 class="preview-section-title">목록 썸네일</h4>
+              <p class="preview-section-desc">portfolio 페이지 카드</p>
+              <div id="preview-card" class="preview-card-host"></div>
+            </section>
+
+            <section class="preview-section">
+              <h4 class="preview-section-title">상세 페이지</h4>
+              <p class="preview-section-desc">project 페이지</p>
+              <div id="preview-detail" class="preview-detail-host"></div>
+            </section>
+          </div>
+        </aside>
+      </div>
     </div>
 
     <footer class="editor-footer">
@@ -143,6 +171,6 @@
 
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="admin.js?v=7"></script>
+  <script src="admin.js?v=9"></script>
 </body>
 </html>

@@ -4,6 +4,8 @@ const REPO_RAW_BASE = 'https://raw.githubusercontent.com/shinhp3/eoulrimstudio-h
 const AUTH_COOKIE = 'eoulrim_admin_auth';
 const AUTH_MAX_AGE = 30 * 24 * 60 * 60;
 const DRAFT_KEY = 'eoulrim_admin_new_item_draft';
+const YEAR_MIN = 2025;
+const DEFAULT_YEAR = '2026';
 
 let portfolioSha = '';
 let portfolioItems = [];
@@ -36,6 +38,8 @@ const formDirtyBadge = document.getElementById('form-dirty-badge');
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file-input');
 const imagePreviews = document.getElementById('image-previews');
+const previewCard = document.getElementById('preview-card');
+const previewDetail = document.getElementById('preview-detail');
 const loadingOverlay = document.getElementById('loading-overlay');
 const toastContainer = document.getElementById('toast-container');
 
@@ -301,6 +305,37 @@ function todayISO() {
   return `${y}-${m}-${day}`;
 }
 
+function initYearSelect() {
+  const select = itemForm?.elements?.year;
+  if (!select) return;
+
+  const maxYear = Math.max(new Date().getFullYear() + 2, YEAR_MIN, Number(DEFAULT_YEAR));
+  select.innerHTML = '';
+  for (let y = maxYear; y >= YEAR_MIN; y--) {
+    const opt = document.createElement('option');
+    opt.value = String(y);
+    opt.textContent = String(y);
+    select.appendChild(opt);
+  }
+}
+
+function setYearField(value) {
+  const select = itemForm.elements.year;
+  if (!select) return;
+
+  const year = String(value || DEFAULT_YEAR).trim();
+  const hasOption = [...select.options].some((opt) => opt.value === year);
+
+  if (!hasOption && year) {
+    const opt = document.createElement('option');
+    opt.value = year;
+    opt.textContent = year;
+    select.insertBefore(opt, select.firstChild);
+  }
+
+  select.value = [...select.options].some((opt) => opt.value === year) ? year : DEFAULT_YEAR;
+}
+
 function formatRegisteredDate(item) {
   const raw = item?.registeredAt;
   if (raw) {
@@ -551,12 +586,86 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function getVisiblePortfolioItems() {
+  return portfolioItems.filter((item) => !item.hidden);
+}
+
+function getPreviewDisplayNumber() {
+  if (editingId) {
+    const index = getVisiblePortfolioItems().findIndex((item) => item.id === editingId);
+    if (index >= 0) return String(index + 1).padStart(2, '0');
+  }
+  return String(getVisiblePortfolioItems().length + 1).padStart(2, '0');
+}
+
+function getPreviewGalleryColumnCount(count) {
+  if (count <= 1) return 1;
+  if (count === 2) return 2;
+  return 3;
+}
+
+function getFormPreviewImageSrcs() {
+  return formImages.map((img) => {
+    if (img.type === 'new') return img.preview;
+    return imageSources(img.path).primary;
+  });
+}
+
+function renderSitePreview() {
+  if (!previewCard || !previewDetail) return;
+
+  const title = itemForm.elements.title.value.trim() || '제목 미입력';
+  const year = itemForm.elements.year.value || DEFAULT_YEAR;
+  const type = itemForm.elements.type.value.trim() || '제작 방식';
+  const service = itemForm.elements.service.value.trim() || '작업 범위';
+  const kicker = itemForm.elements.kicker.value.trim() || '한 줄 요약';
+  const description = itemForm.elements.description.value.trim() || '상세 설명이 여기 표시됩니다.';
+  const images = getFormPreviewImageSrcs();
+  const number = getPreviewDisplayNumber();
+  const thumb = images[0];
+
+  previewCard.innerHTML = `
+    <article class="preview-portfolio-card${thumb ? '' : ' is-empty'}">
+      <figure>${thumb ? `<img src="${escapeHtml(thumb)}" alt="">` : ''}<span>${escapeHtml(number)}</span></figure>
+      <div>
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(type)} · ${escapeHtml(year)}</p>
+      </div>
+    </article>`;
+
+  const galleryCount = getPreviewGalleryColumnCount(Math.max(images.length, 1));
+  const galleryHtml = images.length
+    ? images.map((src, index) => {
+        const heroClass = index === 0 ? ' preview-detail-hero' : '';
+        return `<figure class="${heroClass.trim() || 'preview-detail-figure'}"><img src="${escapeHtml(src)}" alt=""></figure>`;
+      }).join('')
+    : '<figure class="is-empty"></figure>';
+
+  previewDetail.innerHTML = `
+    <section class="preview-detail-gallery is-count-${galleryCount}">${galleryHtml}</section>
+    <header class="preview-detail-heading">
+      <p class="preview-eyebrow"><span>${escapeHtml(number)}</span> · 주요 작업</p>
+      <h1>${escapeHtml(title)}</h1>
+      <div class="preview-detail-facts">
+        <p><small>연도</small><span>${escapeHtml(year)}</span></p>
+        <p><small>유형</small><span>${escapeHtml(type)}</span></p>
+        <p><small>작업 범위</small><span>${escapeHtml(service)}</span></p>
+      </div>
+    </header>
+    <section class="preview-detail-story">
+      <p class="preview-eyebrow">작업 노트</p>
+      <h2 class="preview-kicker sr-only">${escapeHtml(kicker)}</h2>
+      <p class="preview-description">${escapeHtml(description)}</p>
+    </section>`;
+}
+
 // ── Form ──
 function openEditor() {
   formPanel.classList.remove('hidden');
   formPanel.querySelector('.editor-body')?.scrollTo(0, 0);
   document.body.style.overflow = 'hidden';
   updateDraftControls();
+  renderSitePreview();
   setTimeout(() => itemForm.elements.title?.focus(), 50);
 }
 
@@ -682,7 +791,7 @@ async function applyDraft(draft) {
   formTitle.textContent = '새 항목 추가 (임시저장)';
 
   itemForm.elements.title.value = draft.title || '';
-  itemForm.elements.year.value = draft.year || '';
+  setYearField(draft.year || DEFAULT_YEAR);
   itemForm.elements.registeredAt.value = draft.registeredAt || todayISO();
   itemForm.elements.type.value = draft.type || '';
   itemForm.elements.service.value = draft.service || '';
@@ -714,6 +823,7 @@ function openAddFormEmpty() {
   if (editorMode) editorMode.textContent = 'NEW';
   formTitle.textContent = '새 항목 추가';
   itemForm.reset();
+  setYearField(DEFAULT_YEAR);
   itemForm.elements.registeredAt.value = todayISO();
   formImages = [];
   renderImagePreviews();
@@ -743,7 +853,7 @@ function openEditForm(id) {
   if (editorMode) editorMode.textContent = `EDIT · #${id}`;
   formTitle.textContent = item.title || `항목 #${id}`;
   itemForm.elements.title.value = item.title || '';
-  itemForm.elements.year.value = item.year || '';
+  setYearField(item.year || DEFAULT_YEAR);
   itemForm.elements.registeredAt.value = item.registeredAt || '';
   itemForm.elements.type.value = item.type || '';
   itemForm.elements.service.value = item.service || '';
@@ -766,8 +876,14 @@ btnDraftClear?.addEventListener('click', () => {
   showToast('임시저장이 삭제되었습니다.');
 });
 
-itemForm.addEventListener('input', markFormDirty);
-itemForm.addEventListener('change', markFormDirty);
+itemForm.addEventListener('input', () => {
+  markFormDirty();
+  renderSitePreview();
+});
+itemForm.addEventListener('change', () => {
+  markFormDirty();
+  renderSitePreview();
+});
 
 document.addEventListener('keydown', (e) => {
   if (formPanel.classList.contains('hidden')) return;
@@ -821,6 +937,7 @@ function renderImagePreviews() {
         </div>`;
     })
     .join('');
+  renderSitePreview();
 }
 
 function initImageDragDrop() {
@@ -941,7 +1058,7 @@ itemForm.addEventListener('submit', async (e) => {
     const newItem = buildPortfolioItem({
       id,
       title,
-      year: itemForm.elements.year.value.trim(),
+      year: itemForm.elements.year.value,
       type: itemForm.elements.type.value.trim(),
       service: itemForm.elements.service.value.trim(),
       images: finalImagePaths,
@@ -1031,6 +1148,7 @@ async function deleteItem(id) {
 }
 
 // ── Init ──
+initYearSelect();
 initListDragDrop();
 initImageDragDrop();
 initAuth();
