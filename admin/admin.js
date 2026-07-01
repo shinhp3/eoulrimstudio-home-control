@@ -165,7 +165,7 @@ async function savePortfolio(items, sha) {
   portfolioItems = items;
 }
 
-async function uploadPortfolioImage(projectId, filename, file) {
+async function uploadPortfolioImageOne(projectId, filename, file) {
   const base64 = await fileToBase64(file);
   const res = await apiFetch('/portfolio-image', {
     method: 'POST',
@@ -175,6 +175,43 @@ async function uploadPortfolioImage(projectId, filename, file) {
   const data = await res.json();
   if (!data.success || !data.path) throw new Error(`이미지 업로드 실패: ${filename}`);
   return data.path;
+}
+
+/** @param {string} projectId @param {Array<{index:number,filename:string,file:File}>} uploads */
+async function uploadPortfolioImagesBatch(projectId, uploads) {
+  if (uploads.length === 0) return [];
+
+  if (uploads.length === 1) {
+    const u = uploads[0];
+    return [{ index: u.index, path: await uploadPortfolioImageOne(projectId, u.filename, u.file) }];
+  }
+
+  const files = await Promise.all(
+    uploads.map(async (u) => ({
+      projectId,
+      filename: u.filename,
+      content: await fileToBase64(u.file),
+    }))
+  );
+
+  const res = await apiFetch('/portfolio-image', {
+    method: 'POST',
+    body: JSON.stringify({ files }),
+  });
+
+  if (res.ok) {
+    const data = await res.json();
+    if (data.success && Array.isArray(data.paths) && data.paths.length === uploads.length) {
+      return uploads.map((u, i) => ({ index: u.index, path: data.paths[i] }));
+    }
+  }
+
+  showToast('배치 업로드 불가 — 개별 업로드로 진행합니다.', 'info');
+  const results = [];
+  for (const u of uploads) {
+    results.push({ index: u.index, path: await uploadPortfolioImageOne(projectId, u.filename, u.file) });
+  }
+  return results;
 }
 
 async function deletePortfolioImage(path) {
@@ -831,17 +868,30 @@ itemForm.addEventListener('submit', async (e) => {
     const oldItem = editingId ? portfolioItems.find((it) => it.id === editingId) : null;
     const oldImages = oldItem?.images || [];
 
-    const imagePaths = [];
+    const pendingUploads = [];
+    const imagePaths = new Array(formImages.length);
+
     for (let i = 0; i < formImages.length; i++) {
       const img = formImages[i];
       if (img.type === 'existing') {
-        imagePaths.push(img.path);
+        imagePaths[i] = img.path;
       } else {
-        const filename = imageFilename(numId, i);
-        const path = await uploadPortfolioImage(id, filename, img.file);
-        imagePaths.push(path);
+        pendingUploads.push({
+          index: i,
+          filename: imageFilename(numId, i),
+          file: img.file,
+        });
       }
     }
+
+    if (pendingUploads.length > 0) {
+      const uploaded = await uploadPortfolioImagesBatch(id, pendingUploads);
+      for (const { index, path } of uploaded) {
+        imagePaths[index] = path;
+      }
+    }
+
+    const finalImagePaths = imagePaths.filter(Boolean);
 
     const registeredAt = itemForm.elements.registeredAt.value || todayISO();
 
@@ -851,13 +901,13 @@ itemForm.addEventListener('submit', async (e) => {
       year: itemForm.elements.year.value.trim(),
       type: itemForm.elements.type.value.trim(),
       service: itemForm.elements.service.value.trim(),
-      images: imagePaths,
+      images: finalImagePaths,
       kicker: itemForm.elements.kicker.value.trim(),
       description: itemForm.elements.description.value.trim(),
       registeredAt,
     }, oldItem);
 
-    const removedPaths = oldImages.filter((p) => !imagePaths.includes(p));
+    const removedPaths = oldImages.filter((p) => !finalImagePaths.includes(p));
     for (const path of removedPaths) {
       try {
         await deletePortfolioImage(path);
