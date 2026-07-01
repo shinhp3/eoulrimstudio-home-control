@@ -1,4 +1,5 @@
 const WORKER_BASE = 'https://eoulrimstudio-upload.eoulrimstudio.workers.dev';
+const SITE_BASE = 'https://www.eoulrimstudio.com';
 const REPO_RAW_BASE = 'https://raw.githubusercontent.com/shinhp3/eoulrimstudio-home/main';
 const AUTH_COOKIE = 'eoulrim_admin_auth';
 const AUTH_MAX_AGE = 30 * 24 * 60 * 60;
@@ -98,10 +99,19 @@ async function persistOrder(items, successMessage = '순서가 저장되었습�
   }
 }
 
-function imageUrl(path) {
+function imageSources(path) {
   const clean = path.replace(/^\//, '');
   const cache = portfolioSha ? `?v=${encodeURIComponent(portfolioSha.slice(0, 8))}` : '';
-  return `${REPO_RAW_BASE}/${clean}${cache}`;
+  return {
+    primary: `${SITE_BASE}/${clean}${cache}`,
+    fallback: `${REPO_RAW_BASE}/${clean}${cache}`,
+  };
+}
+
+function portfolioImgTag(path, className = '') {
+  const { primary, fallback } = imageSources(path);
+  const cls = className ? ` class="${className}"` : '';
+  return `<img${cls} src="${escapeHtml(primary)}" data-fallback="${escapeHtml(fallback)}" referrerpolicy="no-referrer" alt="" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;delete this.dataset.fallback}">`;
 }
 
 // ── API ──
@@ -319,7 +329,7 @@ function renderList() {
 
   itemGrid.innerHTML = portfolioItems
     .map((item, index) => {
-      const thumb = item.images?.[0] ? imageUrl(item.images[0]) : '';
+      const thumb = item.images?.[0] ? portfolioImgTag(item.images[0], 'item-card-thumb') : '<div class="item-card-thumb"></div>';
       const hidden = isItemHidden(item);
       return `
         <article class="item-card${hidden ? ' is-hidden' : ''}" data-id="${item.id}">
@@ -332,7 +342,7 @@ function renderList() {
             </div>
           </div>
           <div class="item-card-media">
-            ${thumb ? `<img class="item-card-thumb" src="${thumb}" alt="">` : '<div class="item-card-thumb"></div>'}
+            ${thumb}
             ${hidden ? '<div class="item-card-hidden-overlay" aria-hidden="true"><span>숨김</span><small>사이트에 미노출</small></div>' : ''}
           </div>
           <div class="item-card-body">
@@ -718,12 +728,14 @@ function reorderFormImages(fromIndex, toIndex) {
 function renderImagePreviews() {
   imagePreviews.innerHTML = formImages
     .map((img, i) => {
-      const src = img.type === 'existing' ? imageUrl(img.path) : img.preview;
       const label = i === 0 ? 'MAIN' : `SUB ${i}`;
       const mainClass = i === 0 ? ' is-main' : '';
+      const imgTag = img.type === 'existing'
+        ? portfolioImgTag(img.path)
+        : `<img src="${img.preview}" alt="" draggable="false">`;
       return `
         <div class="image-preview${mainClass}" data-index="${i}" draggable="true">
-          <img src="${src}" alt="" draggable="false">
+          ${imgTag}
           <span class="image-preview-label">${label}</span>
           <button type="button" data-remove="${i}" title="제거" aria-label="이미지 제거">&times;</button>
         </div>`;
